@@ -13,6 +13,7 @@ use std::thread::JoinHandle;
 use std::time;
 
 fn main() {
+    env_logger::init();
     let matches = App::new("sender")
         .version("0.1")
         .author("Airenas V.<airenass@gmail.com>")
@@ -26,13 +27,13 @@ fn main() {
                 .takes_value(true),
         )
         .get_matches();
-    println!("Starting sender");
+    log::info!("Starting sender");
 
     let out_path = matches.value_of("socketOut").unwrap_or("test");
     if Path::new(out_path).exists() {
         std::fs::remove_file(out_path).unwrap();
     }
-    println!("Opening incomming socket {}", out_path);
+    log::info!("Opening incomming socket {}", out_path);
     let listener = match UnixListener::bind(out_path) {
         Err(_) => panic!("failed to bind socket"),
         Ok(stream) => stream,
@@ -64,12 +65,12 @@ fn main() {
         }
     });
 
-    println!("Waiting for stdin close");
+    log::info!("Waiting for stdin close");
     tj.join().unwrap();
 
-    println!("Removing pipe");
+    log::info!("Removing pipe");
     std::fs::remove_file(out_path).unwrap();
-    println!("Bye!");
+    log::info!("Bye!");
 }
 
 fn handle_client(
@@ -81,7 +82,7 @@ fn handle_client(
     {
         let mut lr = receivers.lock().unwrap();
         lr.insert(num, txl);
-        println!("connected {}. len = {}", num, lr.len());
+        log::info!("connected {}. len = {}", num, lr.len());
     }
     stream
         .write_all(format!("Hi {}\n", num).as_bytes())
@@ -89,17 +90,17 @@ fn handle_client(
     for received in rxl {
         match stream.write_all(received.as_bytes()) {
             Ok(_) => {
-                println!("Wrote msg to {}", num);
+                log::info!("Wrote msg to {}", num);
             }
             Err(err) => {
-                println!("err: {}", err);
+                log::error!("err: {}", err);
                 break;
             }
         }
     }
     let mut lr = receivers.lock().unwrap();
     lr.remove(&num);
-    println!("disconnected {}. len = {}", num, lr.len());
+    log::info!("disconnected {}. len = {}", num, lr.len());
 }
 
 enum Input {
@@ -111,7 +112,7 @@ fn spawn_stdin_channel() -> (JoinHandle<()>, mpsc::Receiver<String>) {
     let (tx, rx) = mpsc::channel::<Input>();
     let txc = tx.clone();
     thread::spawn(move || {
-        println!("Start stdin thread");
+        log::info!("Start stdin thread");
         loop {
             let mut buffer = String::new();
             std::io::stdin().read_line(&mut buffer).unwrap();
@@ -121,57 +122,57 @@ fn spawn_stdin_channel() -> (JoinHandle<()>, mpsc::Receiver<String>) {
         }
     });
     ctrlc::set_handler(move || {
-        println!("Stop stdin");
+        log::info!("Stop stdin");
         tx.send(Input::Close()).unwrap();
     })
     .expect("Error setting Ctrl-C handler");
     let (res_tx, res_rx) = mpsc::channel::<String>();
     let res = thread::spawn(move || {
-        println!("Start input thread");
+        log::info!("Start input thread");
         for received in rx {
             match received {
                 Input::String(string) => {
-                    println!("Got str: {}", string);
+                    log::info!("Got str: {}", string);
                     let s = string.trim();
                     if !s.is_empty() {
                         res_tx.send(s.to_string()).unwrap();
                     }
                 }
                 Input::Close() => {
-                    println!("Got close event");
+                    log::info!("Got close event");
                     drop(res_tx);
                     break;
                 }
             }
         }
-        println!("Stop input thread");
+        log::info!("Stop input thread");
     });
     (res, res_rx)
 }
 
 fn broadcast(data: mpsc::Receiver<String>, receivers: Arc<Mutex<HashMap<u32, Sender<String>>>>) {
     for received in data {
-        println! {"Got from stdin {}", received}
+        log::info! {"Got from stdin {}", received}
         let tmp = received + "\n";
         let lr = receivers.lock().unwrap();
         for (key, value) in lr.iter() {
             let s = tmp.clone();
             match value.send(s) {
                 Ok(_) => {
-                    println!("send {} to {}", tmp, key);
+                    log::info!("send {} to {}", tmp, key);
                 }
                 Err(err) => {
-                    println!("Can't send to {}: {}", key, err);
+                    log::error!("Can't send to {}: {}", key, err);
                 }
             }
         }
     }
-    println!("Stopped broadcast");
+    log::info!("Stopped broadcast");
 }
 
 fn map(data: mpsc::Receiver<String>, out: Sender<String>) {
     for received in data {
-        println! {"Got from stdin {}", received}
+        log::info! {"Got from stdin {}", received}
         if received == "s" {
             out.send(String::from("qwe 0 KEY_UP device")).unwrap()
         } else if received == "a" {
@@ -186,5 +187,5 @@ fn map(data: mpsc::Receiver<String>, out: Sender<String>) {
         }
     }
     drop(out);
-    println!("Stopped map");
+    log::info!("Stopped map");
 }

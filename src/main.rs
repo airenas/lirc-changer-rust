@@ -20,6 +20,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 fn main() {
+    env_logger::init();
     let matches = App::new("changer")
         .version("0.1")
         .author("Airenas V.<airenass@gmail.com>")
@@ -41,7 +42,7 @@ fn main() {
                 .takes_value(true),
         )
         .get_matches();
-    println!("Starting IR eChanger");
+    log::info!("Starting IR eChanger");
 
     let in_path = matches
         .value_of("socketIn")
