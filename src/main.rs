@@ -58,14 +58,14 @@ fn main() {
         }
     };
 
-    println!("Connected to '{}', waiting for messages...", in_path);
+    log::info!("Connected to '{}', waiting for messages...", in_path);
     let stream = BufReader::new(socket);
 
     if Path::new(out_path).exists() {
         std::fs::remove_file(out_path).unwrap();
     }
     let listener = UnixListener::bind(out_path).unwrap();
-    println!("Connected to '{}', waiting for clients...", out_path);
+    log::info!("Connected to '{}', waiting for clients...", out_path);
 
     let (tx, rx) = unbounded();
     let (ptx, prx) = unbounded();
@@ -118,9 +118,9 @@ fn main() {
     });
 
     tj.join().unwrap();
-    println!("drop pipe file");
+    log::info!("drop pipe file");
     std::fs::remove_file(out_path).unwrap();
-    println!("Bye!");
+    log::info!("Bye!");
 }
 
 enum Msg {
@@ -129,17 +129,17 @@ enum Msg {
 }
 
 fn handle_client(mut stream: UnixStream, info: crossbeam_channel::Sender<Msg>, num: u32) {
-    println!("connected {}", num);
+    log::info!("connected {}", num);
     let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
     info.send(Msg::Init(num, tx)).unwrap();
     for received in rx {
-        println!("Got: {}", &received);
+        log::info!("Got: {}", &received);
         stream
             .write_all((received.clone() + "\n").as_bytes())
             .unwrap();
-        println!("Wrote: {}", &received);
+        log::info!("Wrote: {}", &received);
     }
-    println!("disconnected {}", num);
+    log::info!("disconnected {}", num);
     info.send(Msg::Close(num)).unwrap();
 }
 
@@ -151,7 +151,7 @@ fn process(
     let mut prev: Option<event::Event> = None;
     let mut at = Instant::now();
     fn show(dur: Duration) {
-        println!("Elapsed: {}.{:03} sec", dur.as_secs(), dur.subsec_millis());
+        log::info!("Elapsed: {}.{:03} sec", dur.as_secs(), dur.subsec_millis());
     }
 
     let start = Instant::now();
@@ -160,7 +160,7 @@ fn process(
     loop {
         select! {
             recv(update) -> _ => {
-                println! {"on timer"}
+                log::debug!("on timer");
                 show(start.elapsed());
                 match prev {
                     None => {
@@ -180,7 +180,7 @@ fn process(
             recv(data) -> msg => {
                 show(start.elapsed());
                 let received = msg.unwrap();
-                println! {"Got process {}", received.to_str()}
+                log::info!("Got process {}", received.to_str());
                 let now = Instant::now();
                 match prev {
                     None => {
@@ -218,7 +218,7 @@ fn process(
             recv(cl) -> _ => { break;}
         }
     }
-    println!("exit process");
+    log::info!("exit process");
 }
 
 fn broadcast(
@@ -233,13 +233,13 @@ fn broadcast(
     thread::spawn(move || {
         for received in data {
             let s = received.to_str();
-            println! {"Got {}", &s}
+            log::info!("Got {}", &s);
             let lr = rc.lock().unwrap();
             for (key, value) in lr.iter() {
                 let s = s.clone();
                 match value.send(s) {
                     Ok(_) => {
-                        println!("send {}", key);
+                        log::info!("send {}", key);
                     }
                     Err(err) => {
                         eprintln!("Can't send to {}. {}", key, err);
@@ -256,21 +256,21 @@ fn broadcast(
                 let received = msg.unwrap();
                 match received {
                     Msg::Init(id, stream) => {
-                        println!("Got init: {}", id);
+                        log::info!("Got init: {}", id);
                         let mut lr = l_receivers.lock().unwrap();
                         lr.insert(id, stream);
-                        println!("Clients: {}", lr.len());
+                        log::info!("Clients: {}", lr.len());
                     }
                     Msg::Close(id) => {
-                        println!("Got close: {}", id);
+                        log::info!("Got close: {}", id);
                         let mut lr = l_receivers.lock().unwrap();
                         lr.remove(&id);
-                        println!("Clients: {}", lr.len());
+                        log::info!("Clients: {}", lr.len());
                     }
                 }
             }
             recv(cl) -> _ => { break;}
         }
     }
-    println!("exit broadcast");
+    log::info!("exit broadcast");
 }

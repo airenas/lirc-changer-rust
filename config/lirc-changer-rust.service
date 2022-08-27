@@ -4,7 +4,7 @@ After=
 
 [Service]
 ExecStartPre=ir-keytable -c -w /storage/.config/rc_keymaps/apple_a1156 -D 80 -P 80 
-ExecStart=/storage/lirc-changer-rust/changer -i=/var/run/lirc/lircd -o=/var/run/lirc/lircd1
+ExecStart=RUST_LOG=DEBUG /storage/lirc-changer-rust/changer -i=/var/run/lirc/lircd -o=/var/run/lirc/lircd1
 WorkingDirectory=/storage/lirc-changer-rust
 StandardOutput=append:/storage/lirc-changer-rust/logs/service.log
 StandardError=append:/storage/lirc-changer-rust/logs/service.err
