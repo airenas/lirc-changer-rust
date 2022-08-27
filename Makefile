@@ -37,6 +37,9 @@ run-remote:
 test/unit:
 	cargo test
 
+test/lint:
+	cargo clippy
+
 copy/service:
 	ssh root@$(REMOTE_URL) "mkdir -p $(REMOTE_DIR)/logs"
 	scp config/$(SERVICE_NAME) root@$(REMOTE_URL):/storage/.config/system.d
