@@ -16,7 +16,7 @@ fn main() {
                 .short('i')
                 .long("input")
                 .value_name("FILE")
-                .about("Sets a socket in path")
+                .help("Sets a socket in path")
                 .takes_value(true),
         )
         .get_matches();

@@ -22,7 +22,7 @@ fn main() {
                 .short('o')
                 .long("output")
                 .value_name("FILE")
-                .about("Sets a socket output path")
+                .help("Sets a socket output path")
                 .takes_value(true),
         )
         .get_matches();

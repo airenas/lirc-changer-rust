@@ -1,3 +1,5 @@
+[![Rust](https://github.com/airenas/lirc-changer-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/airenas/lirc-changer-rust/actions/workflows/rust.yml)
+
 # lirc-changer-rust
 
 LIRC event changer to make HOLD events
