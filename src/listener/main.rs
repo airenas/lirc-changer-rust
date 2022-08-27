@@ -32,7 +32,7 @@ fn main() {
             let socket = match UnixStream::connect(in_path_s.clone()) {
                 Ok(sock) => sock,
                 Err(e) => {
-                    fail_count = fail_count + 1;
+                    fail_count += 1;
                     eprintln!(
                         "Couldn't connect to {}, fail={}: {:?}",
                         in_path_s, fail_count, e
@@ -56,7 +56,7 @@ fn main() {
                     println!("Read");
                     l.unwrap()
                 })
-                .map(|l| String::from(l))
+                .map(String::from)
                 .map(|l| {
                     println!("GOT: {}", l);
                     l

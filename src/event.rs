@@ -24,29 +24,29 @@ impl Event {
         };
     }
 
-    pub fn to_str(self: &Self) -> String {
+    pub fn to_str(&self) -> String {
         return format!(
             "{} {:x} {} {}",
             self.id, self.repeat, self.name, self.device
         );
     }
 
-    pub fn to_hold(self: &Self) -> Event {
-        return Event {
+    pub fn to_hold(&self) -> Event {
+        Event {
             id: self.id.clone(),
             repeat: 0,
             name: self.name.clone() + "_HOLD",
             device: self.device.clone(),
-        };
+        }
     }
 
-    pub fn to_new(self: &Self) -> Event {
-        return Event {
+    pub fn to_new(&self) -> Event {
+        Event {
             id: self.id.clone(),
             repeat: 0,
             name: self.name.clone(),
             device: self.device.clone(),
-        };
+        }
     }
 }
 

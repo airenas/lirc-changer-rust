@@ -74,11 +74,9 @@ fn main() {
     let mut signals = Signals::new(&[SIGINT, SIGHUP, SIGTERM, SIGQUIT]).unwrap();
 
     thread::spawn(move || {
-        for sig in signals.forever() {
-            println!("Received signal {:?}", sig);
-            tcl.send(0).unwrap(); // drop sender after return, so it closes receivers
-            return;
-        }
+        let sig = signals.forever().next();
+        println!("Received signal {:?}", sig);
+        tcl.send(0).unwrap(); // drop sender after return, so it closes receivers
     });
 
     thread::spawn(move || {

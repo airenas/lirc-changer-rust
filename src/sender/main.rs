@@ -52,7 +52,7 @@ fn main() {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
-                    num = num + 1;
+                    num += 1;
                     let cr = l_receivers.clone();
                     thread::spawn(move || handle_client(stream, cr, num));
                 }
@@ -133,7 +133,7 @@ fn spawn_stdin_channel() -> (JoinHandle<()>, mpsc::Receiver<String>) {
                 Input::String(string) => {
                     println!("Got str: {}", string);
                     let s = string.trim();
-                    if s != "" {
+                    if !s.is_empty() {
                         res_tx.send(s.to_string()).unwrap();
                     }
                 }
@@ -146,7 +146,7 @@ fn spawn_stdin_channel() -> (JoinHandle<()>, mpsc::Receiver<String>) {
         }
         println!("Stop input thread");
     });
-    return (res, res_rx);
+    (res, res_rx)
 }
 
 fn broadcast(data: mpsc::Receiver<String>, receivers: Arc<Mutex<HashMap<u32, Sender<String>>>>) {
@@ -179,8 +179,7 @@ fn map(data: mpsc::Receiver<String>, out: Sender<String>) {
                 if i > 0 {
                     thread::sleep(time::Duration::from_millis(80));
                 }
-                out.send(String::from(format!("qwe {} KEY_UP device", i)))
-                    .unwrap();
+                out.send(format!("qwe {} KEY_UP device", i)).unwrap();
             }
         } else {
             out.send(received).unwrap()
