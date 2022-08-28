@@ -38,7 +38,7 @@ test/unit:
 	cargo test
 
 test/lint:
-	cargo clippy -- -Dwarnings
+	cargo clippy --all-targets --all-features -- -D warnings
 
 copy/service:
 	ssh root@$(REMOTE_URL) "mkdir -p $(REMOTE_DIR)/logs"
