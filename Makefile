@@ -52,5 +52,4 @@ remote/stop:
 	ssh root@$(REMOTE_URL) "systemctl stop $(SERVICE_NAME)"
 
 remote/logs:
-	ssh root@$(REMOTE_URL) "cat $(REMOTE_DIR)/logs/service.err"
-	# ssh root@$(REMOTE_URL) "cat $(REMOTE_DIR)/logs/service.log"    
+	ssh root@$(REMOTE_URL) "tail -f $(REMOTE_DIR)/logs/service.err"

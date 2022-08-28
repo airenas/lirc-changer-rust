@@ -71,7 +71,7 @@ fn main() {
     let (ptx, prx) = unbounded();
     let (rtx, rrx) = unbounded();
 
-    let (tcl, rcl) = unbounded();
+    let (tcl, r_close) = unbounded();
     let mut signals = Signals::new(&[SIGINT, SIGHUP, SIGTERM, SIGQUIT]).unwrap();
 
     thread::spawn(move || {
@@ -93,11 +93,11 @@ fn main() {
             .for_each(|l| tx.send(l).unwrap())
     });
 
-    let rtct = rcl.clone();
-    thread::spawn(move || process(rx, ptx, rtct));
+    let r_close_cl = r_close.clone();
+    thread::spawn(move || process(rx, ptx, r_close_cl));
 
     let rtxc = rtx.clone();
-    let tj = thread::spawn(move || broadcast(prx, rrx, rtxc, rcl));
+    let tj = thread::spawn(move || broadcast(prx, rrx, rtxc, r_close));
 
     let mut num = 0;
 
@@ -134,13 +134,24 @@ fn handle_client(mut stream: UnixStream, info: crossbeam_channel::Sender<Msg>, n
     info.send(Msg::Init(num, tx)).unwrap();
     for received in rx {
         log::info!("Got: {}", &received);
-        stream
-            .write_all((received.clone() + "\n").as_bytes())
-            .unwrap();
-        log::info!("Wrote: {}", &received);
+        match stream.write_all((received.clone() + "\n").as_bytes()) {
+            Ok(_) => {
+                log::info!("Wrote: {}", &received);
+            }
+            Err(err) => {
+                log::warn!("Can't write to {}. {}", num, err);
+                break;
+            }
+        }
     }
     log::info!("disconnected {}", num);
-    info.send(Msg::Close(num)).unwrap();
+
+    match info.send(Msg::Close(num)) {
+        Ok(_) => {}
+        Err(err) => {
+            log::warn!("{}", err);
+        }
+    }
 }
 
 fn process(
@@ -151,7 +162,7 @@ fn process(
     let mut prev: Option<event::Event> = None;
     let mut at = Instant::now();
     fn show(dur: Duration) {
-        log::info!("Elapsed: {}.{:03} sec", dur.as_secs(), dur.subsec_millis());
+        log::debug!("Elapsed: {}.{:03} sec", dur.as_secs(), dur.subsec_millis());
     }
 
     let start = Instant::now();
