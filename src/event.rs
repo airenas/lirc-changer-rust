@@ -13,7 +13,7 @@ impl Event {
             return Err(format!("'{}' is not of len 4", line));
         }
         //todo: parse as hexadecimal string
-        return match u32::from_str_radix(strs[1], 16) {
+        match u32::from_str_radix(strs[1], 16) {
             Ok(n) => Ok(Event {
                 id: strs[0].to_string(),
                 repeat: n,
@@ -21,14 +21,14 @@ impl Event {
                 device: strs[3].to_string(),
             }),
             Err(e) => Err(format!("can't parse '{}': {}", strs[1], e)),
-        };
+        }
     }
 
     pub fn to_str(&self) -> String {
-        return format!(
+        format!(
             "{} {:x} {} {}",
             self.id, self.repeat, self.name, self.device
-        );
+        )
     }
 
     pub fn to_hold(&self) -> Event {
