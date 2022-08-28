@@ -31,7 +31,7 @@ copy: $(BIN_DIR)/$(BINARY_NAME)
 	scp $(BIN_DIR)/$(BINARY_NAME) root@$(REMOTE_URL):$(REMOTE_DIR)
 	scp $(BIN_DIR)/listener root@$(REMOTE_URL):$(REMOTE_DIR)
 
-run-remote:
+remote/run:
 	ssh -t root@$(REMOTE_URL) "cd $(REMOTE_DIR) && ./$(BINARY_NAME)"
 
 test/unit:
@@ -45,12 +45,12 @@ copy/service:
 	scp config/$(SERVICE_NAME) root@$(REMOTE_URL):/storage/.config/system.d
 	ssh root@$(REMOTE_URL) "systemctl enable $(SERVICE_NAME)"
 
-restart:
+remote/restart:
 	ssh root@$(REMOTE_URL) "systemctl restart $(SERVICE_NAME)"
 
-stop:
+remote/stop:
 	ssh root@$(REMOTE_URL) "systemctl stop $(SERVICE_NAME)"
 
-logs:
+remote/logs:
 	ssh root@$(REMOTE_URL) "cat $(REMOTE_DIR)/logs/service.err"
-	ssh root@$(REMOTE_URL) "cat $(REMOTE_DIR)/logs/service.log"    
+	# ssh root@$(REMOTE_URL) "cat $(REMOTE_DIR)/logs/service.log"    

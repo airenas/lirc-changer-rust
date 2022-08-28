@@ -53,7 +53,7 @@ fn main() {
     let socket = match UnixStream::connect(in_path) {
         Ok(sock) => sock,
         Err(e) => {
-            eprintln!("Couldn't connect to {}: {:?}", in_path, e);
+            log::error!("Couldn't connect to {}: {:?}", in_path, e);
             return;
         }
     };
@@ -76,7 +76,7 @@ fn main() {
 
     thread::spawn(move || {
         let sig = signals.forever().next();
-        println!("Received signal {:?}", sig);
+        log::info!("Received signal {:?}", sig);
         tcl.send(0).unwrap(); // drop sender after return, so it closes receivers
     });
 
@@ -85,11 +85,11 @@ fn main() {
             .lines()
             .map(|l| l.unwrap())
             .map(|l| {
-                println!("{}", l);
+                log::info!("{}", l);
                 l
             })
             .map(|l| event::Event::from_str(&l))
-            .filter_map(|r| r.map_err(|e| eprintln!("{}", e)).ok())
+            .filter_map(|r| r.map_err(|e| log::error!("{}", e)).ok())
             .for_each(|l| tx.send(l).unwrap())
     });
 
@@ -110,7 +110,7 @@ fn main() {
                     thread::spawn(move || handle_client(stream, rtxc, num));
                 }
                 Err(err) => {
-                    eprintln!("Error: {}", err);
+                    log::error!("Error: {}", err);
                     break;
                 }
             }
@@ -184,7 +184,7 @@ fn process(
                 let now = Instant::now();
                 match prev {
                     None => {
-                        println! {"none"}
+                        log::debug!("none");
                         if received.repeat == 0 {
                             prev = Some(received);
                             at = now;
@@ -193,22 +193,22 @@ fn process(
                     Some(e) => {
                         prev = None;
                         if e.name != received.name {
-                            println! {"!=name"}
+                            log::debug!("!=name");
                             out.send(e).unwrap();
                             prev = Some(received);
                             at = now;
                         } else if e.repeat + 1 != received.repeat {
-                            println! {"!=repeat"}
+                            log::debug!("!=repeat");
                             out.send(e).unwrap();
                             if received.repeat == 0 {
                                 prev = Some(received);
                                 at = now;
                             }
                         } else if now > at + Duration::from_millis(500) {
-                            println! {"long"}
+                            log::debug!("long");
                             out.send(e.to_hold()).unwrap();
                         } else{
-                            println! {"skip"}
+                            log::debug!("skip");
                             prev = Some(received)
                         }
                     }
@@ -242,7 +242,7 @@ fn broadcast(
                         log::info!("send {}", key);
                     }
                     Err(err) => {
-                        eprintln!("Can't send to {}. {}", key, err);
+                        log::error!("Can't send to {}. {}", key, err);
                         close_info.send(Msg::Close(*key)).unwrap();
                     }
                 }
