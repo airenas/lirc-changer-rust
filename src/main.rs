@@ -12,13 +12,13 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
+use std::process::ExitCode;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use std::process::ExitCode;
 
 fn main() -> ExitCode {
     env_logger::init();
@@ -73,13 +73,26 @@ fn main() -> ExitCode {
     let (rtx, rrx) = unbounded();
 
     let (t_close, r_close) = unbounded();
-    let mut signals = Signals::new(&[SIGINT, SIGHUP, SIGTERM, SIGQUIT]).unwrap();
+    let (t_close_main, r_close_main): (
+        crossbeam_channel::Sender<i32>,
+        crossbeam_channel::Receiver<i32>,
+    ) = unbounded();
+    let t_exit = thread::spawn(move || {
+        if let Some(sig) = r_close_main.into_iter().next() {
+            log::debug!("Got main exit event {}", sig);
+            drop(t_close);
+            return sig;
+        }    
+        0
+    });
 
-    let tcl = t_close.clone();
+    let mut signals = Signals::new(&[SIGINT, SIGHUP, SIGTERM, SIGQUIT]).unwrap();
+    let tclm = t_close_main.clone();
     thread::spawn(move || {
-        let sig = signals.forever().next();
-        log::info!("Received signal {:?}", sig);
-        tcl.send(0).unwrap(); // drop sender after return, so it closes receivers
+        for (num, sig) in signals.forever().enumerate() {
+            log::debug!("Received signal {:?}, {} time(s)", sig, num);
+            tclm.send(sig).unwrap();
+        }
     });
 
     thread::spawn(move || {
@@ -95,14 +108,21 @@ fn main() -> ExitCode {
             .for_each(|l| tx.send(l).unwrap())
     });
 
+    let mut threads = vec![];
+
     let r_close_cl = r_close.clone();
-    thread::spawn(move || {
+    threads.push(thread::spawn(move || {
         process(rx, ptx, r_close_cl);
-        t_close.send(0).unwrap()
-    });
+        match t_close_main.send(2) {
+            Ok(_) => {}
+            Err(err) => {
+                log::warn!("{}", err);
+            }
+        };
+    }));
 
     let rtxc = rtx.clone();
-    let tj = thread::spawn(move || broadcast(prx, rrx, rtxc, r_close));
+    threads.push(thread::spawn(move || broadcast(prx, rrx, rtxc, r_close)));
 
     let mut num = 0;
 
@@ -122,11 +142,14 @@ fn main() -> ExitCode {
         }
     });
 
-    tj.join().unwrap();
+    threads.into_iter().for_each(|h| h.join().unwrap());
+    let ec = t_exit.join().unwrap();
+
     log::info!("drop pipe file '{}'", out_path);
     std::fs::remove_file(out_path).unwrap();
+
     log::info!("Bye!");
-    ExitCode::SUCCESS
+    ExitCode::from(u8::try_from(ec).unwrap())
 }
 
 enum Msg {
@@ -238,7 +261,10 @@ fn process(
                 }
                 update = tick(Duration::from_millis(100));
             }
-            recv(cl) -> _ => { break;}
+            recv(cl) -> _ => {
+                log::debug!("event from close channel in process");
+                break;
+            }
         }
     }
     log::info!("exit process");
@@ -292,7 +318,10 @@ fn broadcast(
                     }
                 }
             }
-            recv(cl) -> _ => { break;}
+            recv(cl) -> _ => {
+                log::debug!("event from close channel in broadcast");
+                break;
+            }
         }
     }
     log::info!("exit broadcast");
