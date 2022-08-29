@@ -18,8 +18,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
+use std::process::ExitCode;
 
-fn main() {
+fn main() -> ExitCode {
     env_logger::init();
     let matches = App::new("changer")
         .version("0.1")
@@ -54,7 +55,7 @@ fn main() {
         Ok(sock) => sock,
         Err(e) => {
             log::error!("Couldn't connect to {}: {:?}", in_path, e);
-            return;
+            return ExitCode::FAILURE;
         }
     };
 
@@ -125,6 +126,7 @@ fn main() {
     log::info!("drop pipe file '{}'", out_path);
     std::fs::remove_file(out_path).unwrap();
     log::info!("Bye!");
+    ExitCode::SUCCESS
 }
 
 enum Msg {
