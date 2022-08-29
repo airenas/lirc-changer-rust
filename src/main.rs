@@ -71,9 +71,10 @@ fn main() {
     let (ptx, prx) = unbounded();
     let (rtx, rrx) = unbounded();
 
-    let (tcl, r_close) = unbounded();
+    let (t_close, r_close) = unbounded();
     let mut signals = Signals::new(&[SIGINT, SIGHUP, SIGTERM, SIGQUIT]).unwrap();
 
+    let tcl = t_close.clone();
     thread::spawn(move || {
         let sig = signals.forever().next();
         log::info!("Received signal {:?}", sig);
@@ -94,7 +95,10 @@ fn main() {
     });
 
     let r_close_cl = r_close.clone();
-    thread::spawn(move || process(rx, ptx, r_close_cl));
+    thread::spawn(move || {
+        process(rx, ptx, r_close_cl);
+        t_close.send(0).unwrap()
+    });
 
     let rtxc = rtx.clone();
     let tj = thread::spawn(move || broadcast(prx, rrx, rtxc, r_close));
@@ -118,7 +122,7 @@ fn main() {
     });
 
     tj.join().unwrap();
-    log::info!("drop pipe file");
+    log::info!("drop pipe file '{}'", out_path);
     std::fs::remove_file(out_path).unwrap();
     log::info!("Bye!");
 }
@@ -190,7 +194,13 @@ fn process(
             }
             recv(data) -> msg => {
                 show(start.elapsed());
-                let received = msg.unwrap();
+                let received = match msg {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        log::warn!("{}", err);
+                        break;
+                    }
+                };
                 log::info!("Got process {}", received.to_str());
                 let now = Instant::now();
                 match prev {
