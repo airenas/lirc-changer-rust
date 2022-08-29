@@ -100,7 +100,7 @@ fn main() -> ExitCode {
             .lines()
             .map(|l| l.unwrap())
             .map(|l| {
-                log::info!("{}", l);
+                log::debug!("{}", l);
                 l
             })
             .map(|l| event::Event::from_str(&l))
@@ -162,10 +162,10 @@ fn handle_client(mut stream: UnixStream, info: crossbeam_channel::Sender<Msg>, n
     let (tx, rx): (Sender<String>, Receiver<String>) = mpsc::channel();
     info.send(Msg::Init(num, tx)).unwrap();
     for received in rx {
-        log::info!("Got: {}", &received);
+        log::debug!("Got: {}", &received);
         match stream.write_all((received.clone() + "\n").as_bytes()) {
             Ok(_) => {
-                log::info!("Wrote: {}", &received);
+                log::debug!("Wrote: {}", &received);
             }
             Err(err) => {
                 log::warn!("Can't write to {}. {}", num, err);
@@ -226,7 +226,7 @@ fn process(
                         break;
                     }
                 };
-                log::info!("Got process {}", received.to_str());
+                log::debug!("Got process {}", received.to_str());
                 let now = Instant::now();
                 match prev {
                     None => {
@@ -282,13 +282,13 @@ fn broadcast(
     thread::spawn(move || {
         for received in data {
             let s = received.to_str();
-            log::info!("Got {}", &s);
+            log::debug!("Got {}", &s);
             let lr = rc.lock().unwrap();
             for (key, value) in lr.iter() {
                 let s = s.clone();
                 match value.send(s) {
                     Ok(_) => {
-                        log::info!("send {}", key);
+                        log::debug!("send {}", key);
                     }
                     Err(err) => {
                         log::error!("Can't send to {}. {}", key, err);
